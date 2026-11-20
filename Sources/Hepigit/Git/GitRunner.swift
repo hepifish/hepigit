@@ -61,8 +61,8 @@ struct Git {
 
     /// Runs git and returns stdout. Throws with git's own stderr on failure.
     @discardableResult
-    func run(_ args: [String], input: Data? = nil, okCodes: Set<Int32> = [0]) async throws -> Data {
-        let r = await Git.exec(args, cwd: root, input: input)
+    func run(_ args: [String], input: Data? = nil, okCodes: Set<Int32> = [0], env: [String: String] = [:]) async throws -> Data {
+        let r = await Git.exec(args, cwd: root, input: input, env: env)
         guard okCodes.contains(r.code) else {
             let msg = r.err.trimmingCharacters(in: .whitespacesAndNewlines)
             throw GitError(message: msg.isEmpty ? "git \(args.first ?? "") failed (\(r.code))" : msg)
@@ -70,18 +70,18 @@ struct Git {
         return r.out
     }
 
-    func text(_ args: [String], okCodes: Set<Int32> = [0]) async throws -> String {
-        String(decoding: try await run(args, okCodes: okCodes), as: UTF8.self)
+    func text(_ args: [String], okCodes: Set<Int32> = [0], env: [String: String] = [:]) async throws -> String {
+        String(decoding: try await run(args, okCodes: okCodes, env: env), as: UTF8.self)
     }
 
-    static func exec(_ args: [String], cwd: URL, input: Data? = nil) async -> GitResult {
+    static func exec(_ args: [String], cwd: URL, input: Data? = nil, env: [String: String] = [:]) async -> GitResult {
         await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: Shell.gitPath)
                 p.arguments = ["--literal-pathspecs", "-c", "core.quotepath=off", "-c", "color.ui=false"] + args
                 p.currentDirectoryURL = cwd
-                p.environment = Shell.environment
+                p.environment = Shell.environment.merging(env) { _, new in new }
                 let out = Pipe(), err = Pipe(), inp = Pipe()
                 p.standardOutput = out
                 p.standardError = err

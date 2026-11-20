@@ -7,6 +7,8 @@ struct Toast: Identifiable, Equatable {
     let kind: Kind
     let title: String
     let detail: String?
+    var action: (title: String, run: () -> Void)? = nil
+    static func == (a: Toast, b: Toast) -> Bool { a.id == b.id }
 }
 
 struct Modal: Identifiable {
@@ -179,10 +181,10 @@ final class AppState {
 
     // MARK: Feedback
 
-    func toast(_ kind: Toast.Kind, _ title: String, _ detail: String?) {
-        let t = Toast(kind: kind, title: title, detail: detail)
+    func toast(_ kind: Toast.Kind, _ title: String, _ detail: String?, action: (title: String, run: () -> Void)? = nil) {
+        let t = Toast(kind: kind, title: title, detail: detail, action: action)
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { toasts.append(t) }
-        let delay: Double = kind == .error ? 9 : 2.6
+        let delay: Double = kind == .error ? 9 : (action != nil ? 6 : 2.6)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.dismiss(t.id) }
     }
 

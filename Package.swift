@@ -10,6 +10,12 @@ let package = Package(
             name: "Hepigit",
             path: "Sources/Hepigit",
             swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "HepigitTests",
+            dependencies: ["Hepigit"],
+            path: "Tests/HepigitTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )

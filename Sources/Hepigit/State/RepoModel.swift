@@ -53,6 +53,7 @@ final class RepoModel: Identifiable {
     var diffTarget: DiffTarget?
     var scrollRequest: String?
     var busy: Set<String> = []
+    var undoStack: [UndoEntry] = []
     var searchQuery = "" { didSet { updateSearch() } }
     var searchHits: Set<String> = []
     var searchOrder: [String] = []
@@ -254,19 +255,27 @@ final class RepoModel: Identifiable {
     // MARK: Running actions
 
     /// Runs a git action with busy state, a toast on failure, a short success pulse and a refresh.
+    /// Every local change records a before/after snapshot, so it can be undone (see Undo.swift).
     func perform(_ key: String, success: String? = nil, _ work: @escaping () async throws -> Void) {
         guard !busy.contains(key) else { return }
         withAnimation(.snappy) { _ = busy.insert(key) }
         Task {
+            let before = key == "undo" ? nil : await snapshot()
             do {
                 try await work()
-                if let success { AppState.shared.toast(.success, success, nil) }
+                let undoable = await recordUndo(before, label: success ?? Self.actionName(key))
+                if let success {
+                    AppState.shared.toast(.success, success, nil, action: undoable ? ("Undo", { [weak self] in self?.undo() }) : nil)
+                }
                 withAnimation(.snappy) { lastSuccess = key }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { [weak self] in
                     if self?.lastSuccess == key { withAnimation(.easeOut) { self?.lastSuccess = nil } }
                 }
             } catch {
-                AppState.shared.toast(.error, Self.failureTitle(key), error.localizedDescription)
+                // A failed pop or merge can still leave conflicts behind: make that undoable too.
+                let undoable = await recordUndo(before, label: Self.actionName(key))
+                AppState.shared.toast(.error, Self.failureTitle(key), error.localizedDescription,
+                                      action: undoable ? ("Undo", { [weak self] in self?.undo() }) : nil)
             }
             withAnimation(.snappy) { _ = busy.remove(key) }
             await reload(force: false)
@@ -541,10 +550,13 @@ final class RepoModel: Identifiable {
         if amend { args.append("--amend") }
         withAnimation(.snappy) { _ = busy.insert("commit") }
         defer { withAnimation(.snappy) { _ = busy.remove("commit") } }
+        let before = await snapshot()
         do {
             try await git.run(args, input: Data(message.utf8))
+            let undoable = await recordUndo(before, label: amend ? "Amend" : "Commit “\(summary)”")
             await reload(force: false)
-            AppState.shared.toast(.success, amend ? "Commit amended" : "Committed", summary)
+            AppState.shared.toast(.success, amend ? "Commit amended" : "Committed", summary,
+                                  action: undoable ? ("Undo", { [weak self] in self?.undo() }) : nil)
             return true
         } catch {
             AppState.shared.toast(.error, "Commit failed", error.localizedDescription)

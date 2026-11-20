@@ -104,6 +104,13 @@ struct RepoToolbar: View {
 
             Spacer(minLength: 12)
 
+            ToolButton(repo: repo, key: "undo", icon: "arrow.uturn.backward", label: "Undo",
+                       help: repo.undoLabel.map { "Undo \($0) (⌥⌘Z)" } ?? "Nothing to undo yet") { repo.undo() }
+                .disabled(repo.undoStack.isEmpty)
+                .opacity(repo.undoStack.isEmpty ? 0.35 : 1)
+                .animation(.easeOut(duration: 0.2), value: repo.undoStack.isEmpty)
+            Rectangle().fill(Theme.line).frame(width: 1, height: 26).padding(.horizontal, 8)
+
             ToolButton(repo: repo, key: "fetch", icon: "arrow.triangle.2.circlepath", label: "Fetch", help: "Fetch all remotes (⇧⌘F)") { repo.fetch() }
             ToolButton(repo: repo, key: "pull", icon: "arrow.down", label: "Pull", badge: repo.status.behind,
                        help: "Pull (⇧⌘L). Merges only if needed.", menu: {

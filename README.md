@@ -43,6 +43,7 @@ The repo must be public for the check to work without a token.
 | Working tree | Stage / unstage / discard per file or per hunk, stage all, amend, ⌘↩ to commit |
 | Remote | Fetch, pull (merge, ff-only, rebase), push, force push with lease, auto upstream on first push |
 | Stashes | Stash with untracked files, view files and diffs, apply, pop, delete |
+| Undo | Every local action (commit, discard, pop, merge, reset, checkout, branch delete, staging) can be undone from the toolbar, the toast, or ⌥⌘Z. Refuses if files changed since, so it never overwrites newer work |
 | Conflicts | Banner for merge / rebase / cherry-pick / revert in progress, with Continue and Abort |
 
 ## Shortcuts

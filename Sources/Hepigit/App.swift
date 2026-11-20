@@ -39,6 +39,10 @@ struct HepigitApp: App {
                 Button("Close Tab") { if let r = app.active { app.close(r) } }.keyboardShortcut("w")
             }
             CommandMenu("Repository") {
+                Button(app.active?.undoLabel.map { "Undo \($0)" } ?? "Undo") { app.active?.undo() }
+                    .keyboardShortcut("z", modifiers: [.command, .option])
+                    .disabled(app.active?.undoStack.isEmpty ?? true)
+                Divider()
                 Button("Refresh") { app.active?.refresh() }.keyboardShortcut("r")
                 Divider()
                 Button("Fetch") { app.active?.fetch() }.keyboardShortcut("f", modifiers: [.command, .shift])

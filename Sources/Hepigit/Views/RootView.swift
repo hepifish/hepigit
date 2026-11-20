@@ -235,6 +235,13 @@ private struct ToastCard: View {
                 }
             }
             Spacer(minLength: 0)
+            if let a = toast.action {
+                Button(a.title) { AppState.shared.dismiss(toast.id); a.run() }
+                    .buttonStyle(PressStyle())
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.text)
+                    .padding(.horizontal, 10).frame(height: 26)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(Theme.hover))
+            }
             if hover && toast.kind == .error, let d = toast.detail {
                 IconButton(icon: "doc.on.doc", help: "Copy error", size: 20) { copy(d) }
             }
