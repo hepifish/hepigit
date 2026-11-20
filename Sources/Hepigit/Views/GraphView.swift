@@ -178,7 +178,7 @@ struct CommitRow: View {
         guard dragged.id != current.id else { return }
         var m = Modal(title: "\(dragged.name) → \(current.name)", message: "Choose how to bring the changes in.",
                       confirm: "Merge into \(current.name)", destructive: false) { _ in repo.merge(dragged) }
-        m.secondary = (title: "Rebase onto \(dragged.name)", action: { repo.run("rebase", ["rebase", dragged.name], success: "Rebased onto \(dragged.name)") })
+        m.secondary = (title: "Rebase instead", action: { repo.run("rebase", ["rebase", dragged.name], success: "Rebased onto \(dragged.name)") })
         AppState.shared.modal = m
     }
 }

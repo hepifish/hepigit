@@ -131,7 +131,7 @@ final class AppState {
 
     func openAll(_ urls: [URL]) {
         for u in urls where !repos.contains(where: { $0.id == u.path }) { repos.append(RepoModel(url: u)) }
-        if let last = urls.last { activate(last.path) }
+        if let first = urls.first { activate(first.path) }
         if urls.count > 1 { toast(.success, "Opened \(urls.count) repositories", nil) }
     }
 

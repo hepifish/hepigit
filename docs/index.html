@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hepigit · a quiet Git client for the Mac</title>
+<meta name="description" content="A small, native Git client for macOS. Tabs for every repository, a clear commit graph, hunk staging, stashes. Free and open source.">
+<meta property="og:title" content="Hepigit">
+<meta property="og:description" content="A quiet Git client for the Mac. Native, free, light enough to keep fifteen repositories open.">
+<meta property="og:image" content="https://hepifish.github.io/hepigit/screenshot.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #120f12; --panel: #17131a; --raised: #211b22; --line: #2c242c;
+    --text: #ede6dd; --text2: #a99e97; --text3: #6f6560;
+    --rose: #c25b7c; --rose-hi: #d3708f; --olive: #9aa66b; --gold: #c9a35f;
+    --serif: "Fraunces", "New York", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.6 var(--sans); overflow-x: hidden; }
+  a { color: inherit; }
+  .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+
+  /* Hero */
+  header { position: relative; padding: 96px 0 56px; text-align: center; }
+  header::before {
+    content: ""; position: absolute; inset: -20% 0 auto; height: 720px; z-index: -1;
+    background: radial-gradient(ellipse 50% 55% at 50% 30%, rgba(176,70,106,.22), transparent 70%);
+  }
+  .mark { width: 96px; height: 96px; margin: 0 auto 28px; display: block; animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
+  .mark .branch { stroke-dasharray: 120; stroke-dashoffset: 120; animation: draw 1.4s .2s cubic-bezier(.6,0,.2,1) forwards; }
+  .mark .branch.b { animation-delay: .35s; }
+  .mark .node { opacity: 0; transform-box: fill-box; transform-origin: center; animation: pop .5s cubic-bezier(.3,1.6,.5,1) forwards; }
+  .mark .n1 { animation-delay: 1.05s; } .mark .n2 { animation-delay: 1.15s; } .mark .n3 { animation-delay: 1.25s; }
+  h1 { font: 500 clamp(44px, 7vw, 76px)/1.02 var(--serif); letter-spacing: -.02em; animation: rise .9s .1s cubic-bezier(.2,.8,.2,1) both; }
+  .lede { max-width: 560px; margin: 20px auto 0; color: var(--text2); font-size: 18px; animation: rise .9s .2s cubic-bezier(.2,.8,.2,1) both; }
+  .cta { margin-top: 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; animation: rise .9s .3s cubic-bezier(.2,.8,.2,1) both; }
+  .download {
+    display: inline-flex; align-items: center; gap: 10px; padding: 15px 26px; border-radius: 12px;
+    background: var(--rose); color: #fff; font-weight: 600; font-size: 16px; text-decoration: none;
+    box-shadow: 0 10px 30px -10px rgba(194,91,124,.6), inset 0 1px 0 rgba(255,255,255,.15);
+    transition: transform .2s cubic-bezier(.3,1.4,.5,1), background .2s, box-shadow .2s;
+  }
+  .download:hover { background: var(--rose-hi); transform: translateY(-2px); box-shadow: 0 16px 36px -12px rgba(194,91,124,.7), inset 0 1px 0 rgba(255,255,255,.2); }
+  .download:active { transform: translateY(0) scale(.98); }
+  .download svg { width: 18px; height: 18px; }
+  .meta { color: var(--text3); font-size: 13px; }
+  .meta a { color: var(--text2); text-decoration: none; border-bottom: 1px solid var(--line); transition: color .2s, border-color .2s; }
+  .meta a:hover { color: var(--text); border-color: var(--text3); }
+
+  /* Screenshot */
+  .shot { margin: 24px auto 0; padding: 0 0 40px; animation: rise 1.1s .45s cubic-bezier(.2,.8,.2,1) both; }
+  .shot video, .shot img {
+    display: block; width: 100%; height: auto; aspect-ratio: 1600 / 998; background: var(--panel); border-radius: 14px; border: 1px solid var(--line);
+    box-shadow: 0 40px 120px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(237,230,221,.03);
+  }
+
+  /* Features */
+  section { padding: 72px 0; }
+  h2 { font: 500 clamp(28px, 4vw, 38px)/1.15 var(--serif); letter-spacing: -.01em; }
+  .sub { color: var(--text2); margin-top: 10px; max-width: 520px; }
+  .grid { margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .feat { background: var(--panel); padding: 28px; transition: background .25s; }
+  .feat:hover { background: var(--raised); }
+  .feat .dot { width: 10px; height: 10px; border-radius: 50%; border: 2.5px solid var(--c, var(--rose)); margin-bottom: 18px; transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+  .feat:hover .dot { transform: scale(1.35); }
+  .feat h3 { font-size: 16px; font-weight: 600; }
+  .feat p { color: var(--text2); font-size: 14.5px; margin-top: 6px; }
+
+  /* Numbers */
+  .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 32px; margin-top: 44px; }
+  .num b { display: block; font: 500 44px/1 var(--serif); letter-spacing: -.02em; }
+  .num span { color: var(--text2); font-size: 14px; }
+
+  /* Install note */
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px 32px; display: grid; gap: 8px; }
+  .note code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); border: 1px solid var(--line); padding: 2px 7px; border-radius: 6px; color: var(--text); word-break: break-all; }
+  .note p { color: var(--text2); font-size: 14.5px; }
+
+  footer { padding: 48px 0 64px; color: var(--text3); font-size: 13px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); margin-top: 32px; }
+  footer a { color: var(--text2); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { animation: none !important; transition: none !important; }
+    .mark .branch { stroke-dashoffset: 0; } .mark .node { opacity: 1; } .reveal { opacity: 1; transform: none; }
+  }
+  @media (max-width: 600px) {
+    header { padding-top: 64px; }
+    .lede { font-size: 16px; }
+    .note { padding: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+    <path class="branch b" d="M79 50 C60 85 33 78 15 29" fill="none" stroke="#9aa66b" stroke-width="4.6" stroke-linecap="round" pathLength="120"/>
+    <path class="branch" d="M79 50 C60 15 33 22 15 71" fill="none" stroke="#c25b7c" stroke-width="4.6" stroke-linecap="round" pathLength="120"/>
+    <g class="node n1"><circle cx="79" cy="50" r="9.2" fill="#c25b7c" opacity=".22"/><circle cx="79" cy="50" r="5.8" fill="#c25b7c"/><circle cx="79" cy="50" r="2.5" fill="#120f12"/></g>
+    <g class="node n2"><circle cx="56.1" cy="28.5" r="5" fill="#c25b7c"/><circle cx="56.1" cy="28.5" r="2.2" fill="#120f12"/></g>
+    <g class="node n3"><circle cx="56.1" cy="71.5" r="5" fill="#9aa66b"/><circle cx="56.1" cy="71.5" r="2.2" fill="#120f12"/></g>
+  </svg>
+  <h1>Hepigit</h1>
+  <p class="lede">A quiet Git client for the Mac. Your repositories in tabs, the history as a graph, and the everyday actions one click away.</p>
+  <div class="cta">
+    <a class="download" id="download" href="https://github.com/hepifish/hepigit/releases/latest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>
+      <span id="download-label">Download for macOS</span>
+    </a>
+    <div class="meta"><span id="version">Free</span> · macOS 15 or later · Apple silicon · <a href="https://github.com/hepifish/hepigit">Source on GitHub</a></div>
+  </div>
+</header>
+
+<div class="wrap shot">
+  <video id="demo" width="1600" height="998" autoplay muted loop playsinline preload="auto" poster="demo-poster.jpg"
+         aria-label="Hepigit in use: opening three repositories from a folder, reading a commit, merging a branch by dragging it, pushing, and staging a single hunk">
+    <source src="demo.webm" type="video/webm">
+    <source src="demo.mp4" type="video/mp4">
+    <img src="screenshot.jpg" width="2200" height="1371" alt="Hepigit showing the commit graph of the Git project">
+  </video>
+</div>
+
+<section class="wrap reveal">
+  <h2>Everything you reach for daily</h2>
+  <p class="sub">The parts of a Git GUI people actually use, without the account, the subscription or the gigabyte of memory.</p>
+  <div class="grid">
+    <div class="feat"><div class="dot"></div><h3>Every repo in a tab</h3><p>Point it at a folder of projects, tick the ones you work on. Tabs reorder by drag; ⌘1 to ⌘9 jump between them.</p></div>
+    <div class="feat" style="--c: var(--olive)"><div class="dot"></div><h3>A graph you can read</h3><p>Branches, merges and tags in calm lanes. Drag a branch onto yours to merge or rebase.</p></div>
+    <div class="feat" style="--c: var(--gold)"><div class="dot"></div><h3>Stage by hunk</h3><p>Stage, unstage or discard a single change, a file, or everything. Amend and commit with ⌘↩.</p></div>
+    <div class="feat" style="--c: #6fa3a6"><div class="dot"></div><h3>Stashes you can see</h3><p>Park your work with untracked files, look inside any stash, then pop, apply or drop it.</p></div>
+    <div class="feat" style="--c: #9b87c4"><div class="dot"></div><h3>Your Git, your keys</h3><p>It drives the git you already have. SSH config, Keychain, hooks and LFS behave as in the terminal.</p></div>
+    <div class="feat" style="--c: #c47a5a"><div class="dot"></div><h3>Updates itself</h3><p>A new release shows up in the app. One click installs it; your tabs stay where they were.</p></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <h2>Light on purpose</h2>
+  <p class="sub">Native SwiftUI, no browser engine inside. Only the visible repository is watched; the rest sleep.</p>
+  <div class="numbers">
+    <div class="num"><b>~160 MB</b><span>with five repositories loaded</span></div>
+    <div class="num"><b>0%</b><span>CPU while idle</span></div>
+    <div class="num"><b>86,000</b><span>commits of git.git, scrolled smoothly</span></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <div class="note">
+    <h3 style="font: 500 22px/1.2 var(--serif)">First launch</h3>
+    <p>Open the DMG and drag Hepigit into Applications. The app isn't notarized by Apple yet, so the first time, right-click it and choose <b>Open</b>. Or run this once in Terminal:</p>
+    <p><code>xattr -dr com.apple.quarantine /Applications/Hepigit.app</code></p>
+    <p>Needs git, which comes with Xcode Command Line Tools (<code>xcode-select --install</code>).</p>
+  </div>
+</section>
+
+<footer class="wrap">
+  <span>Made by <a href="https://github.com/hepifish">hepifish</a>. Open source.</span>
+  <a href="https://github.com/hepifish/hepigit/releases">All releases</a>
+</footer>
+
+<script>
+  // Point the button straight at the latest DMG; the releases page stays as the fallback.
+  fetch("https://api.github.com/repos/hepifish/hepigit/releases/latest")
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(rel => {
+      const dmg = (rel.assets || []).find(a => a.name.endsWith(".dmg"));
+      if (!dmg) return;
+      const v = rel.tag_name.replace(/^v/, "");
+      document.getElementById("download").href = dmg.browser_download_url;
+      document.getElementById("download-label").textContent = "Download Hepigit " + v;
+      document.getElementById("version").textContent = (dmg.size / 1e6).toFixed(1) + " MB";
+    })
+    .catch(() => {});
+  // Respect reduced motion: keep the poster frame instead of the loop.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { const v = document.getElementById("demo"); v.removeAttribute("autoplay"); v.pause(); }
+  // Sections ease in as they scroll into view.
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .15 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+</script>
+</body>
+</html>

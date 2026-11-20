@@ -3,3 +3,4 @@ dist/
 *.xcodeproj
 .swiftpm/
 .claude/
+.DS_Store

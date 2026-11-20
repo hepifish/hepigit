@@ -78,8 +78,9 @@ struct DiffView: View {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                         ForEach(d.hunks) { hunk in
                             Section {
-                                ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
-                                    LineView(line: line)
+                                // IDs must be unique across all hunks, or the lazy stack reuses rows and shows blanks.
+                                ForEach(hunk.lines.indices.map { hunk.id * 1_000_000 + $0 }, id: \.self) { key in
+                                    LineView(line: hunk.lines[key % 1_000_000])
                                 }
                             } header: {
                                 HunkHeader(repo: repo, hunk: hunk, source: target.source, conflict: target.file.isConflict || target.file.isUntracked)

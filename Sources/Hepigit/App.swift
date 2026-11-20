@@ -8,6 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .utility).async { _ = Shell.gitPath }
         Task { @MainActor in Updater.checkOnLaunch() }
     }
+    /// Folders dropped on the Dock icon, or `open -a Hepigit <folder>` from Terminal.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        Task { @MainActor in for url in urls { await AppState.shared.open(url) } }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }
 

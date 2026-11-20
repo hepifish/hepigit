@@ -163,6 +163,7 @@ struct WorkingPanel: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                 }
                 TextEditor(text: $details).font(.system(size: 12)).scrollContentBackground(.hidden)
+                    .writingToolsBehavior(.disabled)
                     .padding(.horizontal, 5).padding(.vertical, 6)
             }
             .frame(height: 64)
