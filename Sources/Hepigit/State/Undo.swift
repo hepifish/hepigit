@@ -9,6 +9,7 @@ struct Snapshot: Equatable {
     var worktree: String                // tree of the working files, untracked included (ignored excluded)
     var stashes: [StashEntry]
     var inProgress: Bool                // merge, rebase, cherry-pick or revert under way
+    var localExclude: String = ""       // .git/info/exclude: "ignore only on this Mac"
 
     struct StashEntry: Equatable { let hash: String; let message: String }
 }
@@ -53,7 +54,7 @@ extension RepoModel {
         let inProgress = ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"]
             .contains { fm.fileExists(atPath: gitDir.appendingPathComponent($0).path) }
         return Snapshot(head: headRef.isEmpty ? headHash : headRef, refs: refs, index: index, worktree: worktree,
-                        stashes: stashes, inProgress: inProgress)
+                        stashes: stashes, inProgress: inProgress, localExclude: readExclude())
     }
 
     /// Pushes an entry when the action changed something local. Returns whether it can be undone.
@@ -93,7 +94,8 @@ extension RepoModel {
             let f = l.split(separator: "\u{1f}", maxSplits: 1, omittingEmptySubsequences: false)
             return f.count == 2 ? .init(hash: String(f[0]), message: String(f[1])) : nil
         }
-        return Snapshot(head: headRef.isEmpty ? headHash : headRef, refs: refs, index: "", worktree: worktree, stashes: stashes, inProgress: true)
+        return Snapshot(head: headRef.isEmpty ? headHash : headRef, refs: refs, index: "", worktree: worktree, stashes: stashes,
+                        inProgress: true, localExclude: readExclude())
     }
 
     var undoLabel: String? { undoStack.last?.label }
@@ -117,7 +119,15 @@ extension RepoModel {
         undoStack.removeLast()
     }
 
+    var excludeURL: URL? { gitDir?.appendingPathComponent("info/exclude") }
+
+    private func readExclude() -> String {
+        guard let url = excludeURL else { return "" }
+        return (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+    }
+
     private func restore(_ s: Snapshot, from now: Snapshot) async throws {
+
         // 1. Leave any merge, rebase, cherry-pick or revert that the action started.
         if now.inProgress {
             for cmd in ["rebase", "merge", "cherry-pick", "revert"] { _ = try? await git.run([cmd, "--quit"]) }
@@ -137,7 +147,12 @@ extension RepoModel {
         // 5. Staging area.
         try await git.run(["read-tree", s.index])
         _ = try? await git.run(["update-index", "-q", "--refresh"])
-        // 6. Stashes: rebuild the list in its original order. Every entry's commit is still in the
+        // 6. Local ignore rules last: while files are being put back they must keep the current rules.
+        if s.localExclude != now.localExclude, let url = excludeURL {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try s.localExclude.write(to: url, atomically: true, encoding: .utf8)
+        }
+        // 7. Stashes: rebuild the list in its original order. Every entry's commit is still in the
         //    object store (git keeps unreachable objects for weeks), and we hold all their hashes.
         if s.stashes != now.stashes {
             _ = try? await git.run(["stash", "clear"])
@@ -163,6 +178,7 @@ extension RepoModel {
         case "pull": "Pull"
         case "continue": "Continue"
         case "abort": "Abort"
+        case "ignore": "Ignore"
         default: key.prefix(1).uppercased() + key.dropFirst()
         }
     }

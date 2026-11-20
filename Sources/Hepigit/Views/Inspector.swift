@@ -55,6 +55,19 @@ struct FileRow: View {
             Button("Copy path") { copy(file.path) }
             if file.area != .commit {
                 Divider()
+                if repo.isTracked(file) {
+                    Button("Stop tracking and ignore…") { repo.ignore(file, .file) }
+                } else {
+                    Menu("Ignore") {
+                        Button("This file") { repo.ignore(file, .file) }
+                        let ext = (file.fileName as NSString).pathExtension
+                        if !ext.isEmpty { Button("All .\(ext) files") { repo.ignore(file, .ext(ext)) } }
+                        if !file.directory.isEmpty { Button("Everything in \(file.directory)") { repo.ignore(file, .folder(file.directory)) } }
+                        Divider()
+                        Button("This file, only on this Mac") { repo.ignore(file, .file, localOnly: true) }
+                    }
+                }
+                Divider()
                 Button("Discard changes…", role: .destructive) { repo.discard(file) }
             }
         }

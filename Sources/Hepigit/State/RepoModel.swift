@@ -573,6 +573,63 @@ final class RepoModel: Identifiable {
         return (summary, body)
     }
 
+    // MARK: Ignore
+
+    enum IgnoreScope { case file, ext(String), folder(String) }
+
+    /// New and untracked files can simply be ignored; tracked ones must also leave the index,
+    /// or git keeps tracking them despite the rule.
+    func isTracked(_ f: FileChange) -> Bool { !f.isUntracked && !(f.code == "A") }
+
+    func ignore(_ f: FileChange, _ scope: IgnoreScope, localOnly: Bool = false) {
+        let pattern: String
+        let what: String
+        switch scope {
+        case .file: pattern = "/" + Self.escapeIgnore(f.path); what = f.fileName
+        case .ext(let e): pattern = "*." + Self.escapeIgnore(e); what = "*.\(e) files"
+        case .folder(let d): pattern = "/" + Self.escapeIgnore(d); what = d
+        }
+        let untrack = isTracked(f) || f.code == "A"
+        let doIt = { [weak self] in
+            guard let self else { return }
+            let target = localOnly ? self.excludeURL : self.url.appendingPathComponent(".gitignore")
+            self.perform("ignore", success: localOnly ? "Ignored \(what) on this Mac" : "Ignored \(what)") { [git] in
+                guard let target else { throw GitError(message: "Couldn't find the repository's git folder.") }
+                try Self.appendIgnore(pattern, to: target)
+                if untrack { try await git.run(["rm", "-r", "-q", "--cached", "--", f.path]) }
+            }
+        }
+        if isTracked(f) {
+            AppState.shared.confirm("Stop tracking \(f.fileName)?",
+                "The file stays on your disk, but the next commit removes it from the repository for everyone, and git ignores it from then on.",
+                confirm: "Stop tracking and ignore", destructive: false, doIt)
+        } else {
+            doIt()
+        }
+    }
+
+    private static func appendIgnore(_ pattern: String, to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard !lines.contains(pattern) else { return }
+        if !text.isEmpty && !text.hasSuffix("\n") { text += "\n" }
+        text += pattern + "\n"
+        try text.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// Escapes characters that .gitignore would read as syntax, so the rule matches the name literally.
+    static func escapeIgnore(_ s: String) -> String {
+        var out = ""
+        for ch in s {
+            if "\\*?[".contains(ch) { out.append("\\") }
+            out.append(ch)
+        }
+        if let first = out.first, first == "#" || first == "!" { out = "\\" + out }
+        if out.hasSuffix(" ") { out = String(out.dropLast()) + "\\ " }
+        return out
+    }
+
     // MARK: Stashes
 
     func stash() {

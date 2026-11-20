@@ -40,7 +40,7 @@ The repo must be public for the check to work without a token.
 | Graph | Lanes, merges, branch / remote / tag pills (local + remote twins merged into one pill), WIP row, infinite scroll, commit search (⌘F) |
 | Branches | Check out (double-click), create, rename, delete local or remote, fast-forward, push and track, drag a branch onto yours to merge or rebase |
 | Commits | Details, files, diffs, cherry-pick, revert, reset soft/mixed/hard, tag, check out detached, undo last commit |
-| Working tree | Stage / unstage / discard per file or per hunk, stage all, amend, ⌘↩ to commit |
+| Working tree | Stage / unstage / discard per file or per hunk, stage all, amend, ⌘↩ to commit. Right-click a file to ignore it, its extension or its folder, in `.gitignore` or only on this Mac |
 | Remote | Fetch, pull (merge, ff-only, rebase), push, force push with lease, auto upstream on first push |
 | Stashes | Stash with untracked files, view files and diffs, apply, pop, delete |
 | Undo | Every local action (commit, discard, pop, merge, reset, checkout, branch delete, staging) can be undone from the toolbar, the toast, or ⌥⌘Z. Refuses if files changed since, so it never overwrites newer work |

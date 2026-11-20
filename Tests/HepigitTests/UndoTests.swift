@@ -105,6 +105,65 @@ final class UndoTests: XCTestCase {
         try await assertUndoRestores("git stash push -q -m three")
     }
 
+    func testIgnoreViaGitignore() async throws {
+        sh("echo secret > .env && echo keep > notes.txt")
+        try await assertUndoRestores("printf '/.env\\n' >> .gitignore")
+        XCTAssertEqual(read(".env"), "secret\n")
+    }
+
+    func testIgnoreViaLocalExclude() async throws {
+        sh("echo secret > .env")
+        try await assertUndoRestores("printf '/.env\\n' >> .git/info/exclude")
+        XCTAssertEqual(read(".env"), "secret\n")
+    }
+
+    func testStopTrackingAndIgnore() async throws {
+        sh("echo cfg > config.json && git add config.json && git commit -qm cfg && echo local >> config.json")
+        try await assertUndoRestores("git rm -q --cached config.json && printf '/config.json\\n' >> .gitignore")
+        XCTAssertEqual(read("config.json"), "cfg\nlocal\n")
+    }
+
+    // MARK: Ignore action, end to end
+
+    func waitIdle() async {
+        try? await Task.sleep(for: .milliseconds(100))
+        while !repo.busy.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
+    }
+    func untracked() -> [String] { sh("git status --porcelain --untracked-files=all").split(separator: "\n").map(String.init) }
+
+    func testIgnoreFileWithAwkwardName() async throws {
+        sh("mkdir -p logs && echo x > '#odd *name?.txt' && echo y > logs/a.log && echo z > logs/b.log && echo k > keep.txt")
+        await repo.refreshStatus()
+        let odd = FileChange(path: "#odd *name?.txt", oldPath: nil, code: "?", area: .unstaged)
+        repo.ignore(odd, .file); await waitIdle()
+        XCTAssertFalse(untracked().contains { $0.contains("odd") }, "file is ignored")
+        XCTAssertTrue(untracked().contains { $0.contains("keep.txt") }, "the escaped pattern must not match other files")
+        let log = FileChange(path: "logs/a.log", oldPath: nil, code: "?", area: .unstaged)
+        repo.ignore(log, .ext("log")); await waitIdle()
+        XCTAssertFalse(untracked().contains { $0.contains(".log") })
+        XCTAssertEqual(read(".gitignore"), "/\\#odd \\*name\\?.txt\n*.log\n")
+        repo.ignore(log, .ext("log")); await waitIdle()
+        XCTAssertEqual(read(".gitignore"), "/\\#odd \\*name\\?.txt\n*.log\n", "no duplicate lines")
+        try await repo.undoLast()   // undo *.log (the duplicate made no change, so no entry)
+        XCTAssertTrue(untracked().contains { $0.contains("a.log") })
+    }
+
+    func testIgnoreFolderAndLocalOnly() async throws {
+        sh("mkdir -p dist && echo b > dist/app.js && echo s > .env")
+        repo.ignore(FileChange(path: "dist/app.js", oldPath: nil, code: "?", area: .unstaged), .folder("dist/")); await waitIdle()
+        repo.ignore(FileChange(path: ".env", oldPath: nil, code: "?", area: .unstaged), .file, localOnly: true); await waitIdle()
+        XCTAssertEqual(untracked(), ["?? .gitignore"])
+        XCTAssertTrue(sh("cat .git/info/exclude").contains("/.env"))
+        XCTAssertFalse((read(".gitignore") ?? "").contains(".env"), "local-only must not touch .gitignore")
+    }
+
+    func testIgnoreStagedNewFileUnstagesIt() async throws {
+        sh("echo n > new.txt && git add new.txt")
+        repo.ignore(FileChange(path: "new.txt", oldPath: nil, code: "A", area: .staged), .file); await waitIdle()
+        XCTAssertEqual(untracked(), ["?? .gitignore"])
+        XCTAssertEqual(read("new.txt"), "n\n", "file stays on disk")
+    }
+
     func testRefusesWhenSomethingChangedAfterwards() async throws {
         sh("echo wip >> f.txt")
         let snap = await repo.snapshot()
