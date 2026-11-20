@@ -60,7 +60,7 @@ The repo must be public for the check to work without a token.
 - Commit file lists and diffs are cached by hash; they never change.
 - A quiet `git fetch` runs every 10 minutes, only for the visible repo, only while the app is in front.
 
-Measured on git.git (86k commits, 1,000 tags) with 6 tabs open: about 130–165 MB, 0% CPU at idle.
+Measured on git.git (86k commits, 1,000 tags): about 60–80 MB in Activity Monitor, 0% CPU at idle.
 
 ## Layout
 
