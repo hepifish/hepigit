@@ -489,6 +489,49 @@ final class RepoModel: Identifiable {
         }
     }
 
+    // MARK: Conflicts
+
+    /// The conflicted file's text and which sides git still has for it (a side is missing when it deleted the file).
+    func conflict(_ f: FileChange) async -> ConflictState {
+        let stages = (try? await git.text(["ls-files", "-u", "-z", "--", f.path])) ?? ""
+        let nums = Set(stages.split(separator: "\0").compactMap { $0.split(separator: " ").dropFirst(2).first?.first })
+        let data = (try? Data(contentsOf: url.appendingPathComponent(f.path))) ?? Data()
+        let text = data.contains(0) ? nil : String(data: data, encoding: .utf8)
+        return ConflictState(doc: text.flatMap(ConflictDoc.parse), text: text, hasCurrent: nums.contains("2"), hasIncoming: nums.contains("3"))
+    }
+
+    /// Replaces one conflict block in the file with the chosen side. Staging stays a separate, visible step.
+    func resolveBlock(_ f: FileChange, _ index: Int, _ choice: ConflictDoc.Choice) {
+        let file = url.appendingPathComponent(f.path)
+        perform("resolve") {
+            let data = try Data(contentsOf: file)
+            guard let text = String(data: data, encoding: .utf8), let doc = ConflictDoc.parse(text),
+                  index < doc.blocks.count else { throw GitError(message: "The file changed on disk. Reopen it and try again.") }
+            try Data(doc.resolving(index, choice).utf8).write(to: file, options: .atomic)
+        }
+    }
+
+    /// Takes one side for the whole file and marks it resolved. A side that deleted the file deletes it here too.
+    func resolveFile(_ f: FileChange, current: Bool, sideExists: Bool) {
+        let side = current ? "--ours" : "--theirs"
+        perform("resolve", success: "Resolved \(f.fileName)") { [git] in
+            if sideExists {
+                try await git.run(["checkout", side, "--", f.path])
+                try await git.run(["add", "--", f.path])
+            } else {
+                try await git.run(["rm", "-q", "--", f.path])
+            }
+        }
+    }
+
+    /// Brings the conflict markers back, discarding picks made in this file.
+    func restartConflict(_ f: FileChange) {
+        AppState.shared.confirm("Start over on \(f.fileName)?", "The conflict markers come back and the picks you made in this file are discarded.",
+                                confirm: "Start over") { [weak self] in
+            self?.run("resolve", ["checkout", "-m", "--", f.path])
+        }
+    }
+
     // MARK: Working tree
 
     func stage(_ f: FileChange) { run("stage", ["add", "-A", "--", f.path]) }

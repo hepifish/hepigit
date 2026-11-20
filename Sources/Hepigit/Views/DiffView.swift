@@ -9,7 +9,7 @@ struct DiffView: View {
         VStack(spacing: 0) {
             header
             Rectangle().fill(Theme.line).frame(height: 1)
-            content
+            if isConflict { ConflictView(repo: repo, file: target.file) } else { content }
         }
         .task(id: TaskKey(target: target, status: repo.status)) {
             let d = await repo.diff(target)
@@ -17,6 +17,8 @@ struct DiffView: View {
         }
         .onKeyPress(.escape) { repo.diffTarget = nil; return .handled }
     }
+
+    private var isConflict: Bool { target.file.isConflict && target.source == .unstaged }
 
     /// Working-tree diffs reload when status changes; commit diffs are immutable.
     private struct TaskKey: Equatable {
@@ -40,7 +42,7 @@ struct DiffView: View {
                 let sub = f.oldPath.map { "renamed from \($0)" } ?? f.directory
                 if !sub.isEmpty { Text(sub).font(.system(size: 11)).foregroundStyle(Theme.text3).lineLimit(1) }
             }
-            if let d = diff, !d.isBinary {
+            if !isConflict, let d = diff, !d.isBinary {
                 HStack(spacing: 6) {
                     Text("+\(d.added)").foregroundStyle(Theme.olive)
                     Text("−\(d.removed)").foregroundStyle(Theme.danger)
@@ -60,7 +62,8 @@ struct DiffView: View {
     @ViewBuilder private var fileActions: some View {
         switch target.source {
         case .unstaged:
-            PillButton(title: target.file.isConflict ? "Mark resolved" : "Stage file", icon: "plus") { repo.stage(target.file) }
+            // Conflicts are marked resolved inside ConflictView, once no markers are left.
+            if !target.file.isConflict { PillButton(title: "Stage file", icon: "plus") { repo.stage(target.file) } }
         case .staged:
             PillButton(title: "Unstage file", icon: "minus") { repo.unstage(target.file) }
         default: EmptyView()

@@ -44,7 +44,7 @@ The repo must be public for the check to work without a token.
 | Remote | Fetch, pull (merge, ff-only, rebase), push, force push with lease, auto upstream on first push |
 | Stashes | Stash with untracked files, view files and diffs, apply, pop, delete |
 | Undo | Every local action (commit, discard, pop, merge, reset, checkout, branch delete, staging) can be undone from the toolbar, the toast, or ⌥⌘Z. Refuses if files changed since, so it never overwrites newer work |
-| Conflicts | Banner for merge / rebase / cherry-pick / revert in progress, with Continue and Abort |
+| Conflicts | Open a conflicted file and pick current, incoming or both for each conflict, or one side for the whole file. Review the result, then mark it resolved. Works for merges, pulls, rebases and stash pops, with Continue and Abort in the banner |
 
 ## Shortcuts
 

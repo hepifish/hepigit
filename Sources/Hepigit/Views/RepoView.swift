@@ -13,7 +13,7 @@ struct RepoView: View {
                 Sidebar(repo: repo).frame(width: sidebarWidth)
                 ResizeHandle(width: $sidebarWidth, range: 180...420, sign: 1)
                 VStack(spacing: 0) {
-                    if let op = repo.operation { OperationBanner(repo: repo, op: op) }
+                    if repo.operation != nil || !repo.status.conflicts.isEmpty { OperationBanner(repo: repo, op: repo.operation) }
                     ZStack {
                         if let target = repo.diffTarget {
                             DiffView(repo: repo, target: target)
@@ -64,22 +64,30 @@ struct ResizeHandle: View {
 
 struct OperationBanner: View {
     let repo: RepoModel
-    let op: RepoOperation
+    let op: RepoOperation?     // nil for conflicts with nothing to continue, such as a stash pop
 
     var body: some View {
+        let n = repo.status.conflicts.count
         HStack(spacing: 10) {
             Image(systemName: "arrow.triangle.merge").foregroundStyle(Theme.gold)
             VStack(alignment: .leading, spacing: 1) {
-                Text("\(op.rawValue) in progress").font(.system(size: 12.5, weight: .semibold))
-                let n = repo.status.conflicts.count
-                Text(n > 0 ? "\(n) conflicted file\(n == 1 ? "" : "s"). Resolve them in your editor, then stage each one."
+                Text(op.map { "\($0.rawValue) in progress" } ?? "Unresolved conflicts").font(.system(size: 12.5, weight: .semibold))
+                Text(n > 0 ? "\(n) conflicted file\(n == 1 ? "" : "s"). Open each one and pick a side."
                            : "No conflicts left. Continue when ready.")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.text2)
+                    .contentTransition(.numericText())
             }
             Spacer()
-            PillButton(title: "Abort") { repo.abortOperation() }
-            PillButton(title: "Continue", primary: true, busy: repo.busy.contains("continue"),
-                       disabled: !repo.status.conflicts.isEmpty) { repo.continueOperation() }
+            if let next = repo.status.conflicts.first(where: { $0.path != repo.diffTarget?.file.path }) {
+                PillButton(title: "Resolve \(next.fileName)", icon: "arrow.right") {
+                    repo.diffTarget = DiffTarget(file: next, source: .unstaged)
+                }
+            }
+            if op != nil {
+                PillButton(title: "Abort") { repo.abortOperation() }
+                PillButton(title: "Continue", primary: true, busy: repo.busy.contains("continue"),
+                           disabled: n > 0) { repo.continueOperation() }
+            }
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
         .background(Theme.gold.opacity(0.09))
